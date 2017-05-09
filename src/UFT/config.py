@@ -8,13 +8,8 @@ __author__ = "@fanmuzhi, @boqiling"
 
 import sys
 # Projects PartNumber List
-DIAMOND4_LIST = ["AGIGA9811-001BCA",
-                 "AGIGA9811-001DCA",
-                 "AGIGA9801-004BCA",
-                 "AGIGA9801-005JCA",
-                 "AGIGA9801-004JCA",
-                 "AGIGA9811-001JCA",
-                 "AGIGA9811-001JCB"]
+DIAMOND4_LIST = ["AGIGA9801-004BCA",
+                 "AGIGA9801-004JCA"]
 
 # total slot number for one channel,
 # should be 4, 1 for debug
@@ -35,8 +30,8 @@ PS_CHAN = 1
 # output
 PS_VOLT = 12.0
 PS_OVP = 13.0
-PS_CURR = 10.0
-PS_OCP = 12.0
+PS_CURR = 5.0
+PS_OCP = 10.0
 
 # aardvark settings
 # port number

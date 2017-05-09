@@ -22,26 +22,9 @@ import math
 import os
 import traceback
 import datetime
+import numpy as np
 
 logger = logging.getLogger(__name__)
-
-# def get_sensor_status():
-#    """
-#    get sensor status of each DUT present.
-#    :return: list of 1 and 0, 1 for present, 0 for not.
-#    """
-#    result = []
-#    for i in range(TOTAL_SLOTNUM):
-#        a = multimeter.read_analog_ch(i)
-#        if(a > 8):
-#            result.append(0)
-#        elif(a < 1):
-#            result.append(1)
-#        else:
-#            raise RuntimeError("unvalid sensor status.")
-#    logger.info("dut list: {0}".format(result))
-#    return result
-
 
 class ChannelStates(object):
     EXIT = -1
@@ -98,7 +81,6 @@ class Channel(threading.Thread):
         super(Channel, self).__init__(name=name)
 
     def read_volt(self, dut):
-        time.sleep(0.1) # add delay for ardvark by PZHO
         if self.product_class == "Crystal":
             val = self.ld.read_volt()
         elif self.product_class == "Diamond4":
@@ -109,15 +91,16 @@ class Channel(threading.Thread):
         """ hardware initialize in when work loop starts.
         :return: None.
         """
-
-        # setup load, reset it to a known status. add by PZHO
+         # setup load
         self.ld.reset()
-        time.sleep(0.5)
+        time.sleep(2)
         for slot in range(TOTAL_SLOTNUM):
             self.ld.select_channel(slot)
             self.ld.input_off()
+            time.sleep(1)
             self.ld.protect_on()
             self.ld.change_func(load.DCLoad.ModeCURR)
+            time.sleep(1)
 
         # setup power supply
         self.ps.selectChannel(node=PS_ADDR, ch=PS_CHAN)
@@ -165,29 +148,6 @@ class Channel(threading.Thread):
                 self.config_list.append(None)
 
 
-
-        # # setup power supply
-        # self.ps.selectChannel(node=PS_ADDR, ch=PS_CHAN)
-        #
-        # setting = {"volt": PS_VOLT, "curr": PS_CURR,
-        #            "ovp": PS_OVP, "ocp": PS_OCP}
-        # self.ps.set(setting)
-        # self.ps.activateOutput()
-        # time.sleep(1.5)
-        # volt = self.ps.measureVolt()
-        # curr = self.ps.measureCurr()
-        # if not ((PS_VOLT - 1) < volt < (PS_VOLT + 1)):
-        #     logging.error("Power Supply Voltage {0} "
-        #                   "is not in range".format(volt))
-        #     raise AssertionError("Power supply voltage is not in range")
-        # if not (curr >= 0):
-        #     logging.error("Power Supply Current {0} "
-        #                   "is not in range".format(volt))
-        #     raise AssertionError("Power supply current is not in range")
-
-        # reset DUT
-        # self.ps.setVolt(0.0)
-        # self.reset_dut()
 
     def reset_dut(self):
         """disable all charge and self-discharge, enable auto-discharge.
@@ -301,9 +261,9 @@ class Channel(threading.Thread):
                 max_chargetime = config["max"]
                 min_chargetime = config["min"]
 
+                dut.self_capacitance_measured=this_cycle.vcap
                 charge_time = this_cycle.time - start_time
                 dut.charge_time = charge_time
-
                 if charge_time > 180:
                     all_charged &= True
                     if this_cycle.vcap < 9.270:
@@ -320,22 +280,6 @@ class Channel(threading.Thread):
                 else:
                     all_charged &= False
 
-                '''
-                if (charge_time > max_chargetime):
-                    all_charged &= True
-                    dut.status = DUT_STATUS.Fail
-                    dut.errormessage = "Charge Time Too Long."
-                elif (this_cycle.vcap > threshold):
-                    all_charged &= True
-                    # dut.charge(status=False)
-                    if (charge_time < min_chargetime):
-                        dut.status = DUT_STATUS.Fail
-                        dut.errormessage = "Charge Time Too Short."
-                    else:
-                        dut.status = DUT_STATUS.Idle  # pass
-                else:
-                    all_charged &= False
-                '''
                 dut.cycles.append(this_cycle)
                 logger.info("dut: {0} status: {1} vcap: {2} "
                             "temp: {3} message: {4} ".
@@ -374,16 +318,13 @@ class Channel(threading.Thread):
         all_discharged = False
         start_time = time.time()
         self.ps.setVolt(0.0)
-        configAll=[]
-        for dut in self.dut_list:
-            configAll.append(load_test_item(self.config_list[dut.slotnum],
-                                        "Discharge"))
         while (not all_discharged):
             all_discharged = True
             for dut in self.dut_list:
                 if dut is None:
                     continue
-                config = configAll[dut.slotnum]
+                config = load_test_item(self.config_list[dut.slotnum],
+                                        "Discharge")
                 if (not config["enable"]):
                     continue
                 if (config["stoponfail"]) & \
@@ -433,12 +374,11 @@ class Channel(threading.Thread):
                 else:
                     all_discharged &= False
                 dut.cycles.append(this_cycle)
-                """logger.info("dut: {0} status: {1} vcap: {2} "
+                logger.info("dut: {0} status: {1} vcap: {2} "
                             "temp: {3} message: {4} ".
                             format(dut.slotnum, dut.status, this_cycle.vcap,
-                                   this_cycle.temp, dut.errormessage))"""
-            time.sleep(0.01)
-            logger.info("vcap: {0}",format(this_cycle.vcap))
+                                   this_cycle.temp, dut.errormessage))
+            #time.sleep(0)
         self.ps.setVolt(PS_VOLT)
 
     def check_dut_discharge(self):
@@ -559,6 +499,72 @@ class Channel(threading.Thread):
                 dut.errormessage = "Programming VPD Fail"
                 logger.info("dut: {0} status: {1} message: {2} ".
                             format(dut.slotnum, dut.status, dut.errormessage))
+            self.check_crc(dut)
+
+    def check_crc(self,dut):
+
+        crc_address_list1=[0x41,0x42,0x43,0x44,0x45,0x46,0x47,
+                          0x48,0x49,0x4A,0x4B,0x4C,0x4D,0x4E,0x4F,
+                          0x50,0x51,0x52,0x53,0x54,0x55,0x56,0x57,
+                          0x58,0x59,0x5A,0x5B,
+                          0x64,0x65,
+                          0x78,0x79,0x7C,0x7F,
+                          0x80,0x81,0x82,0x83,0x84,0x85,0x86,0x87,
+                          0x88,0x89,0x8A,0x8B,0x8C,0x8D]
+        crc_address_list2=[0x41,0x42,0x43,0x44,0x45,0x46,0x47,
+                          0x48,0x49,0x4A,0x4B,0x4C,0x4D,0x4E,0x4F,
+                          0x50,0x51,0x52,0x53,0x54,0x55,0x56,0x57,
+                          0x58,0x59,0x5A,0x5B,
+                          0x64,0x65,
+                          0x78,0x79,0x7C,0x7F,
+                          0x80,0x81,0x82,0x83,0x84,0x85,0x86,0x87,
+                          0x88,0x89,0x8A,0x8B,0x8C,0x8D,
+                          0xD0,0xD1,0xD2,0xD3,0xD4,0xD5,0xD6,0xD7,
+                          0xD8,0xD9,
+                          0xFF]
+
+
+        crc=np.int16(0)
+        temp1=np.int16(0)
+        for temp in crc_address_list1:
+            temp1=dut.read_vpd_byaddress(temp)
+            crc=np.int16(np.bitwise_xor(crc,np.left_shift(temp1,8)))
+            #logger.info("VPD1: {0} crc1 {1}  ".format(temp1 & 0xFF,crc & 0xffff))
+            for i in range(8):
+                if(np.bitwise_and(crc,0x8000)):
+                    crc=np.int16(np.bitwise_xor(np.int16(np.left_shift(crc,1)),0x1021))
+                else:
+                    crc=np.int16(np.left_shift(crc,1))
+        crc=hex(crc&0xffff)
+
+        temp1=dut.read_vpd_byaddress(0x7D)
+        crc_temp=(dut.read_vpd_byaddress(0x7E)<<8)+temp1
+        logger.info("CRC1: {0} crc1 {1}  ".format(crc,crc_temp&0xffff))
+        if crc_temp != int(crc,16):
+            logger.info("crc not === {0}".format(type(crc)))
+            dut.status=DUT_STATUS.Fail
+            dut.errormessage="CRC fail"
+
+        crc=np.int16(0)
+        temp1=np.int16(0)
+        for temp in crc_address_list2:
+            temp1=dut.read_vpd_byaddress(temp)
+            crc=np.int16(np.bitwise_xor(crc,np.left_shift(temp1,8)))
+            #logger.info("VPD2: {0} crc2 {1}  ".format(temp1 & 0xFF,crc & 0xffff))
+            for i in range(8):
+                if(np.bitwise_and(crc,0x8000)):
+                    crc=np.int16(np.bitwise_xor(np.int16(np.left_shift(crc,1)),0x1021))
+                else:
+                    crc=np.int16(np.left_shift(crc,1))
+        crc=hex(crc&0xffff)
+
+        temp1=dut.read_vpd_byaddress(0xFD)
+        crc_temp=(dut.read_vpd_byaddress(0xFE)<<8)+temp1
+        logger.info("crc2: {0} crc2 {1}  ".format(crc,crc_temp & 0xffff))
+        if crc_temp != int(crc,16):
+            logger.info("crc not === {0}".format(type(crc)))
+            dut.status=DUT_STATUS.Fail
+            dut.errormessage="CR2C fail"
 
     def check_temperature_dut(self):
         """
@@ -775,15 +781,18 @@ class Channel(threading.Thread):
                     else:
                         cur_vcap = cycle.vcap
                         cur_time = cycle.time
-                        cap = (self.current * (cur_time - pre_time)) \
-                              / (pre_vcap - cur_vcap)
-                        cap_list.append(cap)
+                        if ( 5.2 < pre_vcap < 9) & ( 5.2 < cur_vcap < 9):
+                            cap = (self.current * (cur_time - pre_time)) \
+                                  / (pre_vcap - cur_vcap)
+                            cap_list.append(cap)
+                            #logger.info("pre_vcap: {0} cur_vcap: {1} cur_time: {2} pre_time: {3} ".
+                                #format(pre_vcap, cur_vcap,cur_time,pre_time))
+                        pre_vcap = cur_vcap
+                        pre_time = cur_time
             if (len(cap_list) > 0):
-                # for i in range(len(cap_list)):
-                #     print cap_list[i],
                 capacitor = sum(cap_list) / float(len(cap_list))
                 dut.capacitance_measured = capacitor
-                # logger.debug(cap_list)
+                logger.info("capacitor: {0} ".format(dut.capacitance_measured))
             else:
                 dut.capacitance_measured = 0
             if not (config["min"] < dut.capacitance_measured < config["max"]):
@@ -888,13 +897,14 @@ class Channel(threading.Thread):
                     logger.info("Channel: Discharge DUT.")
                     self.discharge_dut()
                     self.progressbar += 30
+                    time.sleep(1)
                 except Exception as e:
                     self.error(e)
             elif (state == ChannelStates.PROGRAM_VPD):
                 try:
                     logger.info("Channel: Program VPD.")
                     self.program_dut()
-                    self.progressbar += 5
+                    self.progressbar += 10
                 except Exception as e:
                     self.error(e)
             elif (state == ChannelStates.CHECK_ENCRYPTED_IC):

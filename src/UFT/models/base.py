@@ -113,6 +113,18 @@ class PGEMBase(DUT):
                 val += datas[i] << 8 * i
         return val
 
+    def read_vpd_byaddress(self, address):
+        """method to read eep_data according to eep_address
+        :return value of the register
+        added by pzho
+        """
+        self.device.slave_addr = 0x53
+        datas = self.device.read_reg(address, 1)
+        val = datas[0]
+        '''for i in range(0, len(datas)):
+            val += datas[i] << 8 * i'''
+        return val
+
     def read_vpd(self):
         """method to read out EEPROM info from dut
         :return a dict of vpd names and values.
