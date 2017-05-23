@@ -270,7 +270,7 @@ class Channel(threading.Thread):
                         # Negative offset over-range
                         dut.status = DUT_STATUS.Fail
                         dut.errormessage = "Negative voltage offset over-range ({0}mV).".format(this_cycle.vcap)
-                    elif this_cycle.vcap > 9.450:
+                    elif this_cycle.vcap > 9.490:
                         # Positive offset over-range
                         dut.status = DUT_STATUS.Fail
                         dut.errormessage = "Positive voltage offset over-range ({0}mV).".format(this_cycle.vcap)

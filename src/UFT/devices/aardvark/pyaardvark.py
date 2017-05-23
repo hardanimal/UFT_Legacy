@@ -13,7 +13,6 @@ __all__ = ["I2CConfig", "Adapter"]
 import logging
 from array import array
 import imp
-import time
 import sys
 
 logger = logging.getLogger(__name__)
@@ -308,7 +307,6 @@ class Adapter(object):
                                                           config,
                                                           length,
                                                           ata_out)
-        #retry the write, add by PZHO
         if (ret != 0):
             self.api.py_aa_i2c_free_bus(self.handle)
             raise_i2c_ex(ret)
@@ -367,7 +365,6 @@ class Adapter(object):
         '''sleep for specified number of milliseconds
         '''
         self.api.py_aa_sleep_ms(ms)
-
 
     def close(self):
         '''close device

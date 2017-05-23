@@ -69,7 +69,6 @@ class DCLoad(object):
         except Exception:
             pass
 
-
     def _write(self, msg):
         self.ser.write(msg + "\n")
 
