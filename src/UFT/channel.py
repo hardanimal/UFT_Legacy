@@ -281,8 +281,8 @@ class Channel(threading.Thread):
                             dut.status = DUT_STATUS.Idle
                     else:
                         all_charged &= False
-                elif(config["ProdType"]=="Diamond4"):
-                    logger.info("Diamond4 discharging")
+                elif(config["ProdType"]=="Diamond4" or config["ProdType"]=="Quartz"):
+                    logger.info("Diamond4 or Quartz discharging")
                     charge_time = this_cycle.time - start_time
                     dut.charge_time = charge_time
                     if (charge_time > max_chargetime):
@@ -797,8 +797,8 @@ class Channel(threading.Thread):
                 continue
             cap_list = []
 
-            vmin=config["Vmin"]
-            vmax=config["Vmax"]
+            vmin=float(config["Vmin"].strip("aAvV"))
+            vmax=float(config["Vmax"].strip("aAvV"))
 
             pre_vcap, pre_time = None, None
             for cycle in dut.cycles:
