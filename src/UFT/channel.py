@@ -261,24 +261,48 @@ class Channel(threading.Thread):
                 max_chargetime = config["max"]
                 min_chargetime = config["min"]
 
-                dut.self_capacitance_measured=this_cycle.vcap
-                charge_time = this_cycle.time - start_time
-                dut.charge_time = charge_time
-                if charge_time > 180:
-                    all_charged &= True
-                    if this_cycle.vcap < 9.270:
-                        # Negative offset over-range
-                        dut.status = DUT_STATUS.Fail
-                        dut.errormessage = "Negative voltage offset over-range ({0}mV).".format(this_cycle.vcap)
-                    elif this_cycle.vcap > 9.490:
-                        # Positive offset over-range
-                        dut.status = DUT_STATUS.Fail
-                        dut.errormessage = "Positive voltage offset over-range ({0}mV).".format(this_cycle.vcap)
+                if(config["ProdType"]=="Emerald4"):
+                    logger.info("Emerald4 discharging")
+                    dut.self_capacitance_measured=this_cycle.vcap
+                    charge_time = this_cycle.time - start_time
+                    dut.charge_time = charge_time
+                    if charge_time > 180:
+                        all_charged &= True
+                        if this_cycle.vcap < 9.270:
+                            # Negative offset over-range
+                            dut.status = DUT_STATUS.Fail
+                            dut.errormessage = "Negative voltage offset over-range ({0}mV).".format(this_cycle.vcap)
+                        elif this_cycle.vcap > 9.490:
+                            # Positive offset over-range
+                            dut.status = DUT_STATUS.Fail
+                            dut.errormessage = "Positive voltage offset over-range ({0}mV).".format(this_cycle.vcap)
+                        else:
+                            # Succeed
+                            dut.status = DUT_STATUS.Idle
                     else:
-                        # Succeed
-                        dut.status = DUT_STATUS.Idle
+                        all_charged &= False
+                elif(config["ProdType"]=="Diamond4" or config["ProdType"]=="Quartz"):
+                    logger.info("Diamond4 or Quartz discharging")
+                    charge_time = this_cycle.time - start_time
+                    dut.charge_time = charge_time
+                    if (charge_time > max_chargetime):
+                        all_charged &= True
+                        dut.self_capacitance_measured=this_cycle.vcap # record the last voltage measured in self_capacitance_measured if charge time too long
+                        dut.status = DUT_STATUS.Fail
+                        dut.errormessage = "Charge Time Too Long."
+                    elif (this_cycle.vcap > threshold):
+                        all_charged &= True
+                        # dut.charge(status=False)
+                        if (charge_time < min_chargetime):
+                            dut.status = DUT_STATUS.Fail
+                            dut.errormessage = "Charge Time Too Short."
+                        else:
+                            dut.status = DUT_STATUS.Idle  # pass
+                    else:
+                        all_charged &= False
                 else:
-                    all_charged &= False
+                    dut.status = DUT_STATUS.Fail
+                    dut.errormessage = "No define type"
 
                 dut.cycles.append(this_cycle)
                 logger.info("dut: {0} status: {1} vcap: {2} "
@@ -772,6 +796,10 @@ class Channel(threading.Thread):
             if dut.status != DUT_STATUS.Idle:
                 continue
             cap_list = []
+
+            vmin=float(config["Vmin"].strip("aAvV"))
+            vmax=float(config["Vmax"].strip("aAvV"))
+
             pre_vcap, pre_time = None, None
             for cycle in dut.cycles:
                 if cycle.state == "discharge":
@@ -781,7 +809,7 @@ class Channel(threading.Thread):
                     else:
                         cur_vcap = cycle.vcap
                         cur_time = cycle.time
-                        if ( 5.2 < pre_vcap < 9) & ( 5.2 < cur_vcap < 9):
+                        if (vmin < pre_vcap < vmax) & (vmin < cur_vcap < vmax):
                             cap = (self.current * (cur_time - pre_time)) \
                                   / (pre_vcap - cur_vcap)
                             cap_list.append(cap)

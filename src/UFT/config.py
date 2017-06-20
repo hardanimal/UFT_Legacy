@@ -8,7 +8,19 @@ __author__ = "@fanmuzhi, @boqiling"
 
 import sys
 # Projects PartNumber List
-DIAMOND4_LIST = ["AGIGA9801-004BCA",
+DIAMOND4_LIST = ["AGIGA9811-001BCA",
+                 "AGIGA9811-001DCA",
+                 "AGIGA9811-001BCB",
+
+                 "AGIGA9811-001JCA",
+                 "AGIGA9811-001JCB",
+                 "AGIGA9811-001JCC",
+
+                 "AGIGA9801-005JCA",
+                 "AGIGA9801-105JCA",
+                 "AGIGA9801-205JCA",
+
+                 "AGIGA9801-004BCA",
                  "AGIGA9801-004JCA"]
 
 # total slot number for one channel,
