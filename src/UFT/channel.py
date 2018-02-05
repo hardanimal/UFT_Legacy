@@ -111,6 +111,7 @@ class Channel(threading.Thread):
         self.ps.set(setting)
         self.ps.activateOutput()
         time.sleep(2)
+        self.adk.free_bus()
         volt = self.ps.measureVolt()
         curr = self.ps.measureCurr()
         if not ((PS_VOLT - 1) < volt < (PS_VOLT + 1)):

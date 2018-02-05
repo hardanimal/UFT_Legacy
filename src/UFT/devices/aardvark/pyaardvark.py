@@ -290,6 +290,9 @@ class Adapter(object):
         id2 = unique_id % 1000000
         return '%04d-%06d' % (id1, id2)
 
+    def free_bus(self):
+        self.api.py_aa_i2c_free_bus(self.handle)
+
     def write(self, wata, config=I2CConfig.AA_I2C_NO_FLAGS):
         '''write ata to slave address
         ata can be byte or array of byte
