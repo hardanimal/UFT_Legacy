@@ -422,12 +422,12 @@ class Channel(threading.Thread):
                 continue
             # disable auto discharge
             self.switch_to_mb()
-            self.auto_discharge(slot=dut.slotnum, status=False)
+            self.auto_discharge(slot=dut.slotnum, status=True)
             # disable charge
             self.switch_to_dut(dut.slotnum)
             dut.charge(status=False)
             # enable self discharge
-            dut.self_discharge(status=True)
+            dut.self_discharge(status=False)
 
             dut.status = DUT_STATUS.Discharging
 
@@ -575,19 +575,23 @@ class Channel(threading.Thread):
                               / (float(config["Resistance"]) * math.log(pre_vcap /
                                                                         cur_vcap))
                         cap_list.append(cap)
+                        logger.info("dut: {0} self meas capacitor: {1} message: {2} ".
+                            format(dut.slotnum, cap,
+                                   dut.errormessage))
             if (len(cap_list) > 0):
                 capacitor = sum(cap_list) / float(len(cap_list))
                 dut.self_capacitance_measured = capacitor
                 logger.debug(cap_list)
             else:
-                dut.capacitance_measured = 0
+                dut.self_capacitance_measured = 0
+
+            logger.info("dut: {0} self meas capacitor: {1} message: {2} ".
+                        format(dut.slotnum, dut.self_capacitance_measured,
+                               dut.errormessage))
             if not (config["min"] < dut.self_capacitance_measured <
                         config["max"]):
                 dut.status = DUT_STATUS.Fail
                 dut.errormessage = "Capacitor out of range."
-                logger.info("dut: {0} self meas capacitor: {1} message: {2} ".
-                            format(dut.slotnum, dut.capacitance_measured,
-                                   dut.errormessage))
 
     def program_dut(self):
         """ program vpd of DUT.
@@ -1020,7 +1024,7 @@ class Channel(threading.Thread):
                     self.error(e)
             elif (state == ChannelStates.SELF_DISCHARGE):
                 try:
-                    logger.info("Channel: Discharge DUT.")
+                    logger.info("Channel: Self Discharge DUT.")
                     self.self_discharge()
                     self.progressbar += 10
                     time.sleep(1)
@@ -1082,7 +1086,7 @@ class Channel(threading.Thread):
         # self.queue.put(ChannelStates.DUT_DISCHARGE)
         self.queue.put(ChannelStates.LOAD_DISCHARGE)
         self.queue.put(ChannelStates.CHECK_CAPACITANCE)
-        self.queue.put(ChannelStates.SELF_DISCHARGE)
+        # self.queue.put(ChannelStates.SELF_DISCHARGE)
         self.queue.put(ChannelStates.EXIT)
         self.start()
 
