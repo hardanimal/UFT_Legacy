@@ -15,6 +15,8 @@ DIAMOND4_LIST = ["AGIGA9811-001BCA",
                  "AGIGA9811-001JCA",
                  "AGIGA9811-001JCB",
                  "AGIGA9811-001JCC",
+                 "AGIGA9811-001JCD",
+                 "AGIGA9811-001JCE",
 
                  "AGIGA9801-005JCA",
                  "AGIGA9801-105JCA",

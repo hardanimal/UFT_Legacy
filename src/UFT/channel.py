@@ -262,7 +262,7 @@ class Channel(threading.Thread):
                 min_chargetime = config["min"]
 
                 if(config["ProdType"]=="Emerald4"):
-                    logger.info("Emerald4 discharging")
+                    logger.info("Emerald4 charging")
                     dut.self_capacitance_measured=this_cycle.vcap
                     charge_time = this_cycle.time - start_time
                     dut.charge_time = charge_time
@@ -282,7 +282,7 @@ class Channel(threading.Thread):
                     else:
                         all_charged &= False
                 elif(config["ProdType"]=="Diamond4" or config["ProdType"]=="Quartz"):
-                    logger.info("Diamond4 or Quartz discharging")
+                    logger.info("Diamond4 or Quartz charging")
                     charge_time = this_cycle.time - start_time
                     dut.charge_time = charge_time
                     if (charge_time > max_chargetime):
@@ -388,8 +388,8 @@ class Channel(threading.Thread):
                     dut.errormessage = "Discharge Time Too Long."
                 elif (this_cycle.vcap < threshold):
                     all_discharged &= True
-                    self.ld.select_channel(dut.slotnum)
-                    self.ld.input_off()
+                    self.ld.select_channel(dut.slotnum, False)
+                    self.ld.input_off(False)
                     if (discharge_time < min_dischargetime):
                         dut.status = DUT_STATUS.Fail
                         dut.errormessage = "Discharge Time Too Short."
