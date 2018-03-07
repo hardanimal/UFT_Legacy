@@ -209,7 +209,13 @@ class Channel(threading.Thread):
             if (config["stoponfail"]) & (dut.status != DUT_STATUS.Idle):
                 continue
             # disable auto discharge
-            self.switch_to_mb()
+            try:
+                self.switch_to_mb()
+            except aardvark.USBI2CAdapterException:
+                try:
+                    self.switch_to_mb()
+                except aardvark.USBI2CAdapterException:
+                    raise
             self.auto_discharge(slot=dut.slotnum, status=False)
             self.switch_to_dut(dut.slotnum)
             try:
