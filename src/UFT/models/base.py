@@ -437,6 +437,26 @@ class Diamond4(PGEMBase):
         # print val
         return val
 
+    def meas_vcap_1(self):
+        val = self.read_ltc3350(0x20) * 0.183
+        # print val
+        return val
+
+    def meas_vcap_2(self):
+        val = self.read_ltc3350(0x21) * 0.183
+        # print val
+        return val
+
+    def meas_vcap_3(self):
+        val = self.read_ltc3350(0x22) * 0.183
+        # print val
+        return val
+
+    def meas_vcap_4(self):
+        val = self.read_ltc3350(0x23) * 0.183
+        # print val
+        return val
+
     def meas_capacitor(self):
         MEAS_CAP_ADDR = 0x1E
         val = self.read_ltc3350(MEAS_CAP_ADDR) * 591 * 330
