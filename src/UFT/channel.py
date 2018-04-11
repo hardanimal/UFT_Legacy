@@ -288,7 +288,7 @@ class Channel(threading.Thread):
                             vcap_2 = dut.meas_vcap_2()
                             vcap_3 = dut.meas_vcap_3()
                             vcap_4 = dut.meas_vcap_4()
-                            logger.info("dut: {0} vcap: {1} vcap_1: {2} vcap_2: {3} vcap_3 {4} vcap_4 {5}".
+                            logger.info("dut: {0} vcap: {1} vcap_1: {2} vcap_2: {3} vcap_3: {4} vcap_4: {5}".
                                         format(dut.slotnum, this_cycle.vcap, vcap_1, vcap_2, vcap_3, vcap_4))
                             spec = this_cycle.vcap / 4 * 1000
                             if ((abs(spec - vcap_1) / spec * 100 > 2) or (abs(spec - vcap_2) / spec * 100 > 2) or
@@ -319,7 +319,7 @@ class Channel(threading.Thread):
                             vcap_2 = dut.meas_vcap_2()
                             vcap_3 = dut.meas_vcap_3()
                             vcap_4 = dut.meas_vcap_4()
-                            logger.info("dut: {0} vcap: {1} vcap_1: {2} vcap_2: {3} vcap_3 {4} vcap_4 {5}".
+                            logger.info("dut: {0} vcap: {1} vcap_1: {2} vcap_2: {3} vcap_3: {4} vcap_4: {5}".
                                         format(dut.slotnum, this_cycle.vcap, vcap_1, vcap_2, vcap_3, vcap_4))
                             spec = this_cycle.vcap / 3 * 1000
                             if ((abs(spec - vcap_1) / spec * 100 > 2) or (abs(spec - vcap_2) / spec * 100 > 2) or
