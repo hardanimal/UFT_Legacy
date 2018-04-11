@@ -209,7 +209,13 @@ class Channel(threading.Thread):
             if (config["stoponfail"]) & (dut.status != DUT_STATUS.Idle):
                 continue
             # disable auto discharge
-            self.switch_to_mb()
+            try:
+                self.switch_to_mb()
+            except aardvark.USBI2CAdapterException:
+                try:
+                    self.switch_to_mb()
+                except aardvark.USBI2CAdapterException:
+                    raise
             self.auto_discharge(slot=dut.slotnum, status=False)
             self.switch_to_dut(dut.slotnum)
             try:
@@ -278,7 +284,19 @@ class Channel(threading.Thread):
                             dut.errormessage = "Positive voltage offset over-range ({0}mV).".format(this_cycle.vcap)
                         else:
                             # Succeed
-                            dut.status = DUT_STATUS.Idle
+                            vcap_1 = dut.meas_vcap_1()
+                            vcap_2 = dut.meas_vcap_2()
+                            vcap_3 = dut.meas_vcap_3()
+                            vcap_4 = dut.meas_vcap_4()
+                            logger.info("dut: {0} vcap: {1} vcap_1: {2} vcap_2: {3} vcap_3: {4} vcap_4: {5}".
+                                        format(dut.slotnum, this_cycle.vcap, vcap_1, vcap_2, vcap_3, vcap_4))
+                            spec = this_cycle.vcap / 4 * 1000
+                            if ((abs(spec - vcap_1) / spec * 100 > 2) or (abs(spec - vcap_2) / spec * 100 > 2) or
+                                    (abs(spec - vcap_3) / spec * 100 > 2) or (abs(spec - vcap_4) / spec * 100 > 2)):
+                                dut.status = DUT_STATUS.Fail
+                                dut.errormessage = "VCAP balance out of range"
+                            else:
+                                dut.status = DUT_STATUS.Idle  # pass
                     else:
                         all_charged &= False
                 elif(config["ProdType"]=="Diamond4" or config["ProdType"]=="Quartz"):
@@ -297,7 +315,19 @@ class Channel(threading.Thread):
                             dut.status = DUT_STATUS.Fail
                             dut.errormessage = "Charge Time Too Short."
                         else:
-                            dut.status = DUT_STATUS.Idle  # pass
+                            vcap_1 = dut.meas_vcap_1()
+                            vcap_2 = dut.meas_vcap_2()
+                            vcap_3 = dut.meas_vcap_3()
+                            vcap_4 = dut.meas_vcap_4()
+                            logger.info("dut: {0} vcap: {1} vcap_1: {2} vcap_2: {3} vcap_3: {4} vcap_4: {5}".
+                                        format(dut.slotnum, this_cycle.vcap, vcap_1, vcap_2, vcap_3, vcap_4))
+                            spec = this_cycle.vcap / 3 * 1000
+                            if ((abs(spec - vcap_1) / spec * 100 > 2) or (abs(spec - vcap_2) / spec * 100 > 2) or
+                                    (abs(spec - vcap_3) / spec * 100 > 2)):
+                                dut.status = DUT_STATUS.Fail
+                                dut.errormessage = "VCAP balance out of range"
+                            else:
+                                dut.status = DUT_STATUS.Idle  # pass
                     else:
                         all_charged &= False
                 else:

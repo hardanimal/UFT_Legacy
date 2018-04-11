@@ -453,7 +453,11 @@
       <bool>false</bool>
      </property>
      <property name="text">
+<<<<<<< HEAD
       <string>AGIGA CORONADO PGEM UFT V1.4.2</string>
+=======
+      <string>AGIGA CORONADO PGEM UFT V1.4.4</string>
+>>>>>>> develop
      </property>
      <property name="textFormat">
       <enum>Qt::AutoText</enum>
