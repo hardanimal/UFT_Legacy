@@ -106,7 +106,7 @@ class PGEMBase(DUT):
             for i in range(0, len(datas)):
                 val += datas[i] << 8 * i
         if (typ == "str"):
-            val = ''.join(chr(i) for i in datas)
+            val = ''.join(chr(i) for i in datas if 0x1F < i < 0x7F)
         if (typ == "int"):
             val = 0
             for i in range(0, len(datas)):
