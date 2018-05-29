@@ -607,9 +607,10 @@ class Channel(threading.Thread):
                                                                         cur_vcap))
                         cap_list.append(cap)
             if (len(cap_list) > 0):
-                capacitor = sum(cap_list) / float(len(cap_list))
+                #capacitor = sum(cap_list) / float(len(cap_list))
+                capacitor = cap_list[-1]
                 dut.self_capacitance_measured = capacitor
-                logger.debug(cap_list)
+                #logger.debug(cap_list)
             else:
                 dut.self_capacitance_measured = 0
 
