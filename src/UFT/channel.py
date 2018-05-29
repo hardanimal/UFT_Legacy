@@ -462,9 +462,10 @@ class Channel(threading.Thread):
 
         # start discharge cycle
         all_discharged = False
-        start_time = time.time()
         #self.ps.setVolt(0.0)
         self.ps.deactivateOutput()
+        time.sleep(2)
+        start_time = time.time()
         while (not all_discharged):
             all_discharged = True
             for dut in self.dut_list:
