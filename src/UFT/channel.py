@@ -264,6 +264,9 @@ class Channel(threading.Thread):
                 self.ld.select_channel(dut.slotnum)
                 this_cycle.vcap = self.read_volt(dut)
 
+                meas_iin=dut.meas_iin()
+                meas_ichg=dut.meas_ichg()
+
                 threshold = float(config["Threshold"].strip("aAvV"))
                 max_chargetime = config["max"]
                 min_chargetime = config["min"]
@@ -336,9 +339,9 @@ class Channel(threading.Thread):
                     dut.errormessage = "No define type"
 
                 dut.cycles.append(this_cycle)
-                logger.info("dut: {0} status: {1} vcap: {2} "
-                            "temp: {3} message: {4} ".
-                            format(dut.slotnum, dut.status, this_cycle.vcap,
+                logger.info("dut: {0} status: {1} vcap: {2} iin: {3} ichg: {4} "
+                            "temp: {5} message: {6} ".
+                            format(dut.slotnum, dut.status, this_cycle.vcap, meas_iin, meas_ichg,
                                    this_cycle.temp, dut.errormessage))
             time.sleep(INTERVAL)
 
