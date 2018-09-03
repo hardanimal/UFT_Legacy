@@ -37,7 +37,6 @@ class ChannelStates(object):
     CHECK_TEMP = 0x1C
     DUT_DISCHARGE = 0x1D
     CHECK_POWER_FAIL = 0x1E
-    SELF_DISCHARGE = 0x1F
 
 
 class Channel(threading.Thread):
@@ -372,8 +371,7 @@ class Channel(threading.Thread):
         # start discharge cycle
         all_discharged = False
         start_time = time.time()
-        #self.ps.setVolt(0.0)
-        self.ps.deactivateOutput()
+        self.ps.setVolt(0.0)
         while (not all_discharged):
             all_discharged = True
             for dut in self.dut_list:
@@ -435,95 +433,7 @@ class Channel(threading.Thread):
                             format(dut.slotnum, dut.status, this_cycle.vcap,
                                    this_cycle.temp, dut.errormessage))
             #time.sleep(0)
-        #self.ps.setVolt(PS_VOLT)
-
-    def self_discharge(self):
-        """ self discharge test
-        """
-        for dut in self.dut_list:
-            if dut is None:
-                continue
-            config = load_test_item(self.config_list[dut.slotnum],
-                                    "Self_Discharge")
-            if not config.get("enable", 0):
-                continue
-            if (config["stoponfail"]) & (dut.status != DUT_STATUS.Idle):
-                continue
-            # disable charge
-            self.switch_to_dut(dut.slotnum)
-            dut.charge(status=False)
-            # disable self discharge
-            dut.self_discharge(status=False)
-            # enable auto discharge
-            self.switch_to_mb()
-            self.auto_discharge(slot=dut.slotnum, status=True)
-
-            dut.status = DUT_STATUS.Discharging
-
-        # start discharge cycle
-        all_discharged = False
-        #self.ps.setVolt(0.0)
-        self.ps.deactivateOutput()
-        time.sleep(2)
-        start_time = time.time()
-        while (not all_discharged):
-            all_discharged = True
-            for dut in self.dut_list:
-                if dut is None:
-                    continue
-                config = load_test_item(self.config_list[dut.slotnum],
-                                        "Self_Discharge")
-                if not config.get("enable", 0):
-                    continue
-                if (config["stoponfail"]) & \
-                        (dut.status != DUT_STATUS.Discharging):
-                    continue
-                self.switch_to_dut(dut.slotnum)
-                # cap_in_ltc = dut.meas_capacitor()
-                # print cap_in_ltc
-                this_cycle = Cycle()
-                this_cycle.vin = self.ps.measureVolt()
-                try:
-                    temperature = dut.check_temp()
-                except aardvark.USBI2CAdapterException:
-                    # temp ic not ready
-                    temperature = 0
-                this_cycle.temp = temperature
-                this_cycle.counter = self.counter
-                this_cycle.time = time.time()
-
-                this_cycle.state = "self_discharge"
-                self.ld.select_channel(dut.slotnum)
-                this_cycle.vcap = self.read_volt(dut)
-                # this_cycle.vcap = self.ld.read_volt()
-                self.counter += 1
-
-                threshold = float(config["Threshold"].strip("aAvV"))
-                max_dischargetime = config["max"]
-                min_dischargetime = config["min"]
-
-                discharge_time = this_cycle.time - start_time
-                #dut.discharge_time = discharge_time
-                if (discharge_time > max_dischargetime):
-                    all_discharged &= True
-                    dut.status = DUT_STATUS.Fail
-                    dut.errormessage = "Discharge Time Too Long."
-                elif (this_cycle.vcap < threshold):
-                    all_discharged &= True
-                    if (discharge_time < min_dischargetime):
-                        dut.status = DUT_STATUS.Fail
-                        dut.errormessage = "Discharge Time Too Short."
-                    else:
-                        dut.status = DUT_STATUS.Idle  # pass
-                else:
-                    all_discharged &= False
-                dut.cycles.append(this_cycle)
-                logger.info("dut: {0} status: {1} vcap: {2} "
-                            "temp: {3} message: {4} ".
-                            format(dut.slotnum, dut.status, this_cycle.vcap,
-                                   this_cycle.temp, dut.errormessage))
-            time.sleep(INTERVAL)
-        #self.ps.setVolt(PS_VOLT)
+        self.ps.setVolt(PS_VOLT)
 
     def check_dut_discharge(self):
         """ check auto/self discharge function on each DUT.
@@ -534,7 +444,7 @@ class Channel(threading.Thread):
                 continue
             config = load_test_item(self.config_list[dut.slotnum],
                                     "Self_Measured_Capacitor")
-            if not config.get("enable", 0):
+            if (not config["enable"]):
                 continue
             if (config["stoponfail"]) & (dut.status != DUT_STATUS.Idle):
                 continue
@@ -548,13 +458,12 @@ class Channel(threading.Thread):
 
             # enable self discharge
             dut.self_discharge(status=True)
-            time.sleep(1)   # allow some settle time
 
         for i in range(SD_COUNTER):
             for dut in self.dut_list:
                 if dut is None:
                     continue
-                if not config.get("enable", 0):
+                if (not config["enable"]):
                     continue
                 if (config["stoponfail"]) & (dut.status != DUT_STATUS.Idle):
                     continue
@@ -569,24 +478,24 @@ class Channel(threading.Thread):
                     temperature = 0
                 this_cycle.temp = temperature
                 this_cycle.counter = self.counter
+                this_cycle.time = time.time()
                 this_cycle.state = "self_discharge"
                 self.ld.select_channel(dut.slotnum)
                 this_cycle.vcap = self.read_volt(dut)
-                this_cycle.time = time.time()
                 self.counter += 1
                 logger.info("dut: {0} status: {1} vcap: {2} "
                             "temp: {3} message: {4} ".
                             format(dut.slotnum, dut.status, this_cycle.vcap,
                                    this_cycle.temp, dut.errormessage))
                 dut.cycles.append(this_cycle)
-            time.sleep(1)
+            time.sleep(INTERVAL)
 
         for dut in self.dut_list:
             if dut is None:
                 continue
             config = load_test_item(self.config_list[dut.slotnum],
                                     "Self_Measured_Capacitor")
-            if not config.get("enable", 0):
+            if (not config["enable"]):
                 continue
             if (config["stoponfail"]) & (dut.status != DUT_STATUS.Idle):
                 continue
@@ -607,20 +516,18 @@ class Channel(threading.Thread):
                                                                         cur_vcap))
                         cap_list.append(cap)
             if (len(cap_list) > 0):
-                #capacitor = sum(cap_list) / float(len(cap_list))
-                capacitor = cap_list[-1]
+                capacitor = sum(cap_list) / float(len(cap_list))
                 dut.self_capacitance_measured = capacitor
-                #logger.debug(cap_list)
+                logger.debug(cap_list)
             else:
-                dut.self_capacitance_measured = 0
-
-            logger.info("dut: {0} self meas capacitor: {1} message: {2} ".
-                        format(dut.slotnum, dut.self_capacitance_measured,
-                               dut.errormessage))
+                dut.capacitance_measured = 0
             if not (config["min"] < dut.self_capacitance_measured <
                         config["max"]):
                 dut.status = DUT_STATUS.Fail
                 dut.errormessage = "Capacitor out of range."
+                logger.info("dut: {0} self meas capacitor: {1} message: {2} ".
+                            format(dut.slotnum, dut.capacitance_measured,
+                                   dut.errormessage))
 
     def program_dut(self):
         """ program vpd of DUT.
@@ -1033,7 +940,7 @@ class Channel(threading.Thread):
                 try:
                     logger.info("Channel: Initialize.")
                     self.init()
-                    self.progressbar += 5
+                    self.progressbar += 20
                 except Exception as e:
                     self.error(e)
             elif (state == ChannelStates.CHARGE):
@@ -1047,15 +954,7 @@ class Channel(threading.Thread):
                 try:
                     logger.info("Channel: Discharge DUT.")
                     self.discharge_dut()
-                    self.progressbar += 20
-                    time.sleep(1)
-                except Exception as e:
-                    self.error(e)
-            elif (state == ChannelStates.SELF_DISCHARGE):
-                try:
-                    logger.info("Channel: Self Discharge DUT.")
-                    self.self_discharge()
-                    self.progressbar += 10
+                    self.progressbar += 30
                     time.sleep(1)
                 except Exception as e:
                     self.error(e)
@@ -1112,8 +1011,7 @@ class Channel(threading.Thread):
         self.queue.put(ChannelStates.CHECK_ENCRYPTED_IC)
         self.queue.put(ChannelStates.CHECK_TEMP)
         self.queue.put(ChannelStates.CHECK_POWER_FAIL)
-        self.queue.put(ChannelStates.DUT_DISCHARGE)
-        self.queue.put(ChannelStates.SELF_DISCHARGE)
+        # self.queue.put(ChannelStates.DUT_DISCHARGE)
         self.queue.put(ChannelStates.LOAD_DISCHARGE)
         self.queue.put(ChannelStates.CHECK_CAPACITANCE)
         self.queue.put(ChannelStates.EXIT)
