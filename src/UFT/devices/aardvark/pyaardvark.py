@@ -67,8 +67,8 @@ try:
     from pkg_resources import resource_filename
 
     if sys.platform == "win32":
-        aardvark32 = resource_filename(__name__, 'aardvark32.pyd')
-        aardvark64 = resource_filename(__name__, 'aardvark64.pyd')
+        aardvark32 = resource_filename(__name__, 'aardvark32.dll')
+        aardvark64 = resource_filename(__name__, 'aardvark64.dll')
     else:
         aardvark32 = resource_filename(__name__, 'aardvark32.so')
         aardvark64 = resource_filename(__name__, 'aardvark64.so')
@@ -78,8 +78,8 @@ except NotImplementedError:
         # trick for cx_freeze, the *pyd, *so and *dll need be copied to
         # same directory of the executable file.
         if sys.platform == "win32":
-            aardvark32 = "aardvark32.pyd"
-            aardvark64 = "aardvark64.pyd"
+            aardvark32 = "aardvark32.dll"
+            aardvark64 = "aardvark64.dll"
         else:
             aardvark32 = "aardvark32.so"
             aardvark64 = "aardvark64.so"

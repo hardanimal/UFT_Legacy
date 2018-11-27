@@ -5,8 +5,8 @@ from cx_Freeze import setup, Executable
 includes = ["atexit", "UFT", "UFT_GUI"]
 include_files = [('src/UFT/devices/aardvark/aardvark32.so', 'aardvark32.so'),
                  ('src/UFT/devices/aardvark/aardvark64.so', 'aardvark64.so'),
-                 ('src/UFT/devices/aardvark/aardvark32.pyd', 'aardvark32.pyd'),
-                 ('src/UFT/devices/aardvark/aardvark64.pyd', 'aardvark64.pyd'),
+                 ('src/UFT/devices/aardvark/aardvark32.dll', 'aardvark32.dll'),
+                 ('src/UFT/devices/aardvark/aardvark64.dll', 'aardvark64.dll'),
                  ]
 #bin_includes = ['src/aardvark32.so', 'src/aardvark64.so']
 
