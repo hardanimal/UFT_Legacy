@@ -589,7 +589,7 @@ class Channel(threading.Thread):
                     crc=np.int16(np.bitwise_xor(np.int16(np.left_shift(crc,1)),0x1021))
                 else:
                     crc=np.int16(np.left_shift(crc,1))
-        crc=hex(crc&0xffff)
+        crc=hex(crc&0xffff).strip('L')
 
         temp1=dut.read_vpd_byaddress(0x7D)
         crc_temp=(dut.read_vpd_byaddress(0x7E)<<8)+temp1
@@ -610,7 +610,7 @@ class Channel(threading.Thread):
                     crc=np.int16(np.bitwise_xor(np.int16(np.left_shift(crc,1)),0x1021))
                 else:
                     crc=np.int16(np.left_shift(crc,1))
-        crc=hex(crc&0xffff)
+        crc=hex(crc&0xffff).strip('L')
 
         temp1=dut.read_vpd_byaddress(0xFD)
         crc_temp=(dut.read_vpd_byaddress(0xFE)<<8)+temp1
