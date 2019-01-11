@@ -187,6 +187,9 @@ class UFT_UiHandler(UFT_UiForm):
                       "background-color: yellow"]
         label[slotnum].setText(status_list[status])
         label[slotnum].setStyleSheet(color_list[status])
+        sn_list = [self.sn_lineEdit_1, self.sn_lineEdit_2, self.sn_lineEdit_3, self.sn_lineEdit_4]
+        if status == 1:
+            sn_list[slotnum].clear()
 
     def barcodes(self):
         barcodes = [str(self.sn_lineEdit_1.text()),
