@@ -10,6 +10,8 @@ __version__ = "1.0"
 __email__ = "mzfa@cypress.com"
 
 import sys
+sys.path.append("./src/")
+
 import logging
 import time
 from PyQt4.QtGui import QApplication
@@ -64,11 +66,13 @@ class MainWidget(QtGui.QWidget):
         self.ui.sn_lineEdit_4.textChanged.connect(self.ui.show_image)
         self.ui.checkBox.toggled.connect(self.ui.config_edit_toggle)
 
+        self.u = Update()
+
     def start_click(self):
         try:
             barcodes = self.ui.barcodes()
             cable_barcodes = self.ui.cabel_barcodes()
-            self.u = Update(barcodes, cable_barcodes)
+            self.u.loaddata(barcodes, cable_barcodes)
             self.connect(self.u, QtCore.SIGNAL('progress_bar'),
                          self.ui.progressBar.setValue)
             self.connect(self.u, QtCore.SIGNAL('is_alive'),
@@ -87,39 +91,43 @@ class MainWidget(QtGui.QWidget):
 
 
 class Update(QtCore.QThread):
-    def __init__(self, barcodes, cable_barcodes):
+    def __init__(self):
         QtCore.QThread.__init__(self)
-        self.ch = Channel(barcode_list=barcodes, cable_barcodes_list=cable_barcodes, channel_id=0,
-                          name="UFT_CHANNEL")
-        self.ch.setDaemon(True)
 
     def __del__(self):
         self.wait()
 
+    def loaddata(self, barcodes, cable_barcodes):
+        self.barcodes = barcodes
+        self.cable_barcodes = cable_barcodes
+
     def run(self):
         sec_count = 0
-        self.ch.auto_test()
+        ch = Channel(barcode_list=self.barcodes, cable_barcodes_list=self.cable_barcodes, channel_id=0,
+                          name="UFT_CHANNEL")
+
+        ch.auto_test()
         self.emit(QtCore.SIGNAL("is_alive"), 1)
-        while self.ch.isAlive():
+        while ch.isAlive():
             sec_count += 1
-            self.emit(QtCore.SIGNAL("progress_bar"), self.ch.progressbar)
+            self.emit(QtCore.SIGNAL("progress_bar"), ch.progressbar)
             self.emit(QtCore.SIGNAL("time_used"), sec_count)
-            for dut in self.ch.dut_list:
+            for dut in ch.dut_list:
                 if dut is not None:
                     self.emit(QtCore.SIGNAL("dut_status"), dut.slotnum,
                               dut.status)
             time.sleep(1)
 
-        self.emit(QtCore.SIGNAL("progress_bar"), self.ch.progressbar)
-        for dut in self.ch.dut_list:
+        self.emit(QtCore.SIGNAL("progress_bar"), 100)
+        for dut in ch.dut_list:
             if dut is not None:
                 self.emit(QtCore.SIGNAL("dut_status"), dut.slotnum, dut.status)
-        self.emit(QtCore.SIGNAL("is_alive"), 0)
 
-        self.ch.save_db()
+        ch.save_db()
 
         time.sleep(1)
-        self.terminate()
+        del ch
+        self.emit(QtCore.SIGNAL("is_alive"), 0)
 
 
 def main():
