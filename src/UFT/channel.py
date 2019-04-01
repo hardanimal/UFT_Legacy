@@ -464,10 +464,8 @@ class Channel(threading.Thread):
         all_discharged = False
         #self.ps.setVolt(0.0)
         self.ps.deactivateOutput()
-        time.sleep(2)
-        start_time = time.time()
-        while (not all_discharged):
-            all_discharged = True
+        time.sleep(1)
+        for i in range(SD_COUNTER):
             for dut in self.dut_list:
                 if dut is None:
                     continue
@@ -479,8 +477,6 @@ class Channel(threading.Thread):
                         (dut.status != DUT_STATUS.Discharging):
                     continue
                 self.switch_to_dut(dut.slotnum)
-                # cap_in_ltc = dut.meas_capacitor()
-                # print cap_in_ltc
                 this_cycle = Cycle()
                 this_cycle.vin = self.ps.measureVolt()
                 try:
@@ -490,40 +486,61 @@ class Channel(threading.Thread):
                     temperature = 0
                 this_cycle.temp = temperature
                 this_cycle.counter = self.counter
-                this_cycle.time = time.time()
 
-                this_cycle.state = "self_discharge"
+                this_cycle.state = "self_power_off_discharge"
                 self.ld.select_channel(dut.slotnum)
                 this_cycle.vcap = self.read_volt(dut)
-                # this_cycle.vcap = self.ld.read_volt()
+                this_cycle.time = time.time()
                 self.counter += 1
 
-                threshold = float(config["Threshold"].strip("aAvV"))
-                max_dischargetime = config["max"]
-                min_dischargetime = config["min"]
-
-                discharge_time = this_cycle.time - start_time
-                #dut.discharge_time = discharge_time
-                if (discharge_time > max_dischargetime):
-                    all_discharged &= True
-                    dut.status = DUT_STATUS.Fail
-                    dut.errormessage = "Discharge Time Too Long."
-                elif (this_cycle.vcap < threshold):
-                    all_discharged &= True
-                    if (discharge_time < min_dischargetime):
-                        dut.status = DUT_STATUS.Fail
-                        dut.errormessage = "Discharge Time Too Short."
-                    else:
-                        dut.status = DUT_STATUS.Idle  # pass
-                else:
-                    all_discharged &= False
-                dut.cycles.append(this_cycle)
                 logger.info("dut: {0} status: {1} vcap: {2} "
                             "temp: {3} message: {4} ".
                             format(dut.slotnum, dut.status, this_cycle.vcap,
                                    this_cycle.temp, dut.errormessage))
-            time.sleep(INTERVAL)
-        #self.ps.setVolt(PS_VOLT)
+                dut.cycles.append(this_cycle)
+            time.sleep(1)
+
+        for dut in self.dut_list:
+            if dut is None:
+                continue
+            config = load_test_item(self.config_list[dut.slotnum],
+                                    "Self_Discharge")
+            if not config.get("enable", 0):
+                continue
+            if (config["stoponfail"]) & (dut.status != DUT_STATUS.Discharging):
+                continue
+            if dut.status != DUT_STATUS.Discharging:
+                continue
+            cap_list = []
+            pre_vcap, pre_time = None, None
+            for cycle in dut.cycles:
+                if cycle.state == "self_power_off_discharge":
+                    if pre_vcap is None:
+                        pre_vcap = cycle.vcap
+                        pre_time = cycle.time
+                    else:
+                        cur_vcap = cycle.vcap
+                        cur_time = cycle.time
+                        cap = (cur_time - pre_time) \
+                              / (float(config["Resistance"]) * math.log(pre_vcap /
+                                                                        cur_vcap))
+                        cap_list.append(cap)
+            if (len(cap_list) > 0):
+                #capacitor = sum(cap_list) / float(len(cap_list))
+                capacitor = cap_list[-1]
+                dut.self_capacitance_measured = capacitor
+                #logger.debug(cap_list)
+            else:
+                dut.self_capacitance_measured = 0
+
+            logger.info("dut: {0} self meas capacitor: {1} message: {2} ".
+                        format(dut.slotnum, dut.self_capacitance_measured,
+                               dut.errormessage))
+            dut.status = DUT_STATUS.Idle
+            if not (config["min"] < dut.self_capacitance_measured <
+                        config["max"]):
+                dut.status = DUT_STATUS.Fail
+                dut.errormessage = "Capacitor out of range."
 
     def check_dut_discharge(self):
         """ check auto/self discharge function on each DUT.
@@ -554,6 +571,8 @@ class Channel(threading.Thread):
             for dut in self.dut_list:
                 if dut is None:
                     continue
+                config = load_test_item(self.config_list[dut.slotnum],
+                                        "Self_Measured_Capacitor")
                 if not config.get("enable", 0):
                     continue
                 if (config["stoponfail"]) & (dut.status != DUT_STATUS.Idle):
