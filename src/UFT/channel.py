@@ -29,6 +29,7 @@ logger = logging.getLogger(__name__)
 class ChannelStates(object):
     EXIT = -1
     INIT = 0x0A
+    CHECK_PRESENT = 0x0B
     LOAD_DISCHARGE = 0x0C
     CHARGE = 0x0E
     PROGRAM_VPD = 0x0F
@@ -868,6 +869,44 @@ class Channel(threading.Thread):
         val = (val & (0x01 << dut.slotnum)) >> dut.slotnum
         return val
 
+    def read_present_io(self, dut):
+        """read power_fail_int signal on TCA9555 on mother board
+        """
+        chnum = self.channel
+        self.adk.slave_addr = 0x20 + chnum
+        REG_INPUT = 0x00
+        # REG_OUTPUT = 0x02
+        REG_CONFIG = 0x06
+        # config PIO-0 to input and PIO-1 to input
+        # first PIO-0 then PIO-1
+        wdata = [REG_CONFIG, 0xFF, 0xFF]
+        self.adk.write(wdata)
+        # read reg_input
+        val = self.adk.read_reg(REG_INPUT, length=2)
+        val = val[0]  # only need port 0 value
+        # check current slot
+        val = (val & (0x01 << dut.slotnum)) >> dut.slotnum
+        return val
+
+    def check_present_status(self):
+        self.switch_to_mb()
+
+        # check power fail io with power on
+        for dut in self.dut_list:
+            if dut is None:
+                continue
+            if dut.status != DUT_STATUS.Idle:
+                continue
+
+            val = self.read_present_io(dut)
+
+            if (val != 0):
+                dut.status = DUT_STATUS.Fail
+                dut.errormessage = "check present_status fail."
+                logger.info("dut: {0} status: {1} int_io: {2} message: {3} ".
+                            format(dut.slotnum, dut.status,
+                                   val, dut.errormessage))
+
     def check_power_fail(self):
         self.switch_to_mb()
 
@@ -1055,11 +1094,18 @@ class Channel(threading.Thread):
                     self.progressbar += 5
                 except Exception as e:
                     self.error(e)
+            elif (state == ChannelStates.CHECK_PRESENT):
+                try:
+                    logger.info("Channel: Check the DUT Present Pin.")
+                    self.check_present_status()
+                    self.progressbar += 5
+                except Exception as e:
+                    self.error(e)
             elif (state == ChannelStates.CHARGE):
                 try:
                     logger.info("Channel: Charge DUT.")
                     self.charge_dut()
-                    self.progressbar += 20
+                    self.progressbar += 15
                 except Exception as e:
                     self.error(e)
             elif (state == ChannelStates.LOAD_DISCHARGE):
@@ -1125,16 +1171,17 @@ class Channel(threading.Thread):
                 self.exit = True
 
     def auto_test(self):
-        self.queue.put(ChannelStates.INIT)
-        self.queue.put(ChannelStates.CHARGE)
-        self.queue.put(ChannelStates.PROGRAM_VPD)
-        self.queue.put(ChannelStates.CHECK_ENCRYPTED_IC)
-        self.queue.put(ChannelStates.CHECK_TEMP)
-        self.queue.put(ChannelStates.CHECK_POWER_FAIL)
-        self.queue.put(ChannelStates.DUT_DISCHARGE)
-        self.queue.put(ChannelStates.SELF_DISCHARGE)
-        self.queue.put(ChannelStates.LOAD_DISCHARGE)
-        self.queue.put(ChannelStates.CHECK_CAPACITANCE)
+        self.queue.put(ChannelStates.INIT)  # time 5
+        self.queue.put(ChannelStates.CHECK_PRESENT)  # time 5
+        self.queue.put(ChannelStates.CHARGE)  # time 15
+        self.queue.put(ChannelStates.PROGRAM_VPD)  # time 10
+        self.queue.put(ChannelStates.CHECK_ENCRYPTED_IC)  # time 5
+        self.queue.put(ChannelStates.CHECK_TEMP)  # time 5
+        self.queue.put(ChannelStates.CHECK_POWER_FAIL)  # time 10
+        self.queue.put(ChannelStates.DUT_DISCHARGE)  # time 10
+        self.queue.put(ChannelStates.SELF_DISCHARGE)  # time 10
+        self.queue.put(ChannelStates.LOAD_DISCHARGE)  # time 20
+        self.queue.put(ChannelStates.CHECK_CAPACITANCE)  # time 5
         self.queue.put(ChannelStates.EXIT)
         self.start()
 
