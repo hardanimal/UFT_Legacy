@@ -466,6 +466,8 @@ class Channel(threading.Thread):
         #self.ps.setVolt(0.0)
         self.ps.deactivateOutput()
         time.sleep(1)
+
+        loop_on=False
         for i in range(SD_COUNTER):
             for dut in self.dut_list:
                 if dut is None:
@@ -477,6 +479,8 @@ class Channel(threading.Thread):
                 if (config["stoponfail"]) & \
                         (dut.status != DUT_STATUS.Discharging):
                     continue
+
+                loop_on=True
                 self.switch_to_dut(dut.slotnum)
                 this_cycle = Cycle()
                 this_cycle.vin = self.ps.measureVolt()
@@ -499,7 +503,8 @@ class Channel(threading.Thread):
                             format(dut.slotnum, dut.status, this_cycle.vcap,
                                    this_cycle.temp, dut.errormessage))
                 dut.cycles.append(this_cycle)
-            time.sleep(1)
+            if loop_on==True:
+                time.sleep(1)
 
         for dut in self.dut_list:
             if dut is None:
@@ -512,7 +517,7 @@ class Channel(threading.Thread):
                 continue
             if dut.status != DUT_STATUS.Discharging:
                 continue
-            cap_list = []
+            voltage_list = []
             pre_vcap, pre_time = None, None
             for cycle in dut.cycles:
                 if cycle.state == "self_power_off_discharge":
@@ -522,13 +527,12 @@ class Channel(threading.Thread):
                     else:
                         cur_vcap = cycle.vcap
                         cur_time = cycle.time
-                        cap = (cur_time - pre_time) \
+                        voltage_list.append(cur_vcap)
+            if (len(voltage_list) > 0):
+                #capacitor = sum(cap_list) / float(len(cap_list))
+                capacitor = (cur_time - pre_time) \
                               / (float(config["Resistance"]) * math.log(pre_vcap /
                                                                         cur_vcap))
-                        cap_list.append(cap)
-            if (len(cap_list) > 0):
-                #capacitor = sum(cap_list) / float(len(cap_list))
-                capacitor = cap_list[-1]
                 dut.self_capacitance_measured = capacitor
                 #logger.debug(cap_list)
             else:
@@ -566,8 +570,10 @@ class Channel(threading.Thread):
 
             # enable self discharge
             dut.self_discharge(status=True)
-            time.sleep(1)   # allow some settle time
 
+        time.sleep(1)   # allow some settle time
+
+        loop_on=False
         for i in range(SD_COUNTER):
             for dut in self.dut_list:
                 if dut is None:
@@ -579,6 +585,7 @@ class Channel(threading.Thread):
                 if (config["stoponfail"]) & (dut.status != DUT_STATUS.Idle):
                     continue
 
+                loop_on=True
                 self.switch_to_dut(dut.slotnum)
                 this_cycle = Cycle()
                 this_cycle.vin = self.ps.measureVolt()
@@ -599,7 +606,9 @@ class Channel(threading.Thread):
                             format(dut.slotnum, dut.status, this_cycle.vcap,
                                    this_cycle.temp, dut.errormessage))
                 dut.cycles.append(this_cycle)
-            time.sleep(1)
+
+            if loop_on==True:
+                time.sleep(1)
 
         for dut in self.dut_list:
             if dut is None:
@@ -612,7 +621,7 @@ class Channel(threading.Thread):
                 continue
             if dut.status != DUT_STATUS.Idle:
                 continue
-            cap_list = []
+            voltage_list = []
             pre_vcap, pre_time = None, None
             for cycle in dut.cycles:
                 if cycle.state == "self_discharge":
@@ -622,13 +631,12 @@ class Channel(threading.Thread):
                     else:
                         cur_vcap = cycle.vcap
                         cur_time = cycle.time
-                        cap = (cur_time - pre_time) \
+                        voltage_list.append(cur_vcap)
+            if (len(voltage_list) > 0):
+                #capacitor = sum(cap_list) / float(len(cap_list))
+                capacitor = (cur_time - pre_time) \
                               / (float(config["Resistance"]) * math.log(pre_vcap /
                                                                         cur_vcap))
-                        cap_list.append(cap)
-            if (len(cap_list) > 0):
-                #capacitor = sum(cap_list) / float(len(cap_list))
-                capacitor = cap_list[-1]
                 dut.self_capacitance_measured = capacitor
                 #logger.debug(cap_list)
             else:
