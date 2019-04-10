@@ -89,6 +89,7 @@ def load_test_item(config, itemname):
                 result = r.groupdict()
                 this_misc[result["key"]] = result["value"]
         return dict(this_misc.items() + item.to_dict()[itemname].items())
+    return {}
 
 
 def db_2_file(dburi, directory):
